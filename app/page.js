@@ -13,10 +13,17 @@ export default function HomePage() {
   useEffect(() => {
     // Check if already logged in
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        router.push('/dashboard')
-      } else {
+      try {
+        const { data, error } = await supabase.auth.getSession()
+        if (error) throw error
+        if (data?.session) {
+          router.push('/dashboard')
+        } else {
+          setCheckingAuth(false)
+        }
+      } catch (err) {
+        console.error('Auth error:', err)
+        await supabase.auth.signOut() // Clear broken state
         setCheckingAuth(false)
       }
     }
@@ -39,22 +46,22 @@ export default function HomePage() {
 
   if (checkingAuth) {
     return (
-      <div className="gradient-bg flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full" style={{animation: 'spin 1s linear infinite'}}></div>
-          <p className="text-indigo-300 text-lg font-medium">Loading...</p>
+          <div className="w-16 h-16 border-4 border-indigo-600 dark:border-indigo-500 border-t-transparent rounded-full" style={{animation: 'spin 1s linear infinite'}}></div>
+          <p className="text-gray-600 dark:text-indigo-300 text-lg font-medium">Loading...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="gradient-bg flex items-center justify-center min-h-screen px-4">
+    <div className="flex items-center justify-center min-h-screen px-4 relative overflow-hidden bg-white dark:bg-transparent">
       {/* Background decorations */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-indigo-600 rounded-full opacity-10 blur-3xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-600 rounded-full opacity-10 blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600 rounded-full opacity-5 blur-3xl"></div>
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-indigo-200 dark:bg-indigo-600 rounded-full opacity-30 dark:opacity-10 blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-200 dark:bg-purple-600 rounded-full opacity-30 dark:opacity-10 blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-200 dark:bg-blue-600 rounded-full opacity-20 dark:opacity-5 blur-3xl"></div>
       </div>
 
       <div className="relative z-10 w-full max-w-md">
@@ -68,12 +75,12 @@ export default function HomePage() {
         </div>
 
         {/* Card */}
-        <div className="glass rounded-3xl p-8 md:p-10 fade-in">
+        <div className="glass rounded-3xl p-8 md:p-10 fade-in relative z-10 bg-white/70 shadow-xl dark:shadow-none dark:bg-white/5">
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-white mb-3">
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-3">
               Smart Bookmark
             </h1>
-            <p className="text-indigo-300 text-lg">
+            <p className="text-gray-600 dark:text-indigo-300 text-lg">
               Save, organize & sync your bookmarks in real-time
             </p>
           </div>
@@ -85,9 +92,9 @@ export default function HomePage() {
               { icon: '⚡', text: 'Real-time sync across all your tabs' },
               { icon: '🌐', text: 'Access from anywhere, anytime' },
             ].map((feature, i) => (
-              <div key={i} className="flex items-center gap-3 text-indigo-200">
+              <div key={i} className="flex items-center gap-3 text-gray-700 dark:text-indigo-200">
                 <span className="text-xl">{feature.icon}</span>
-                <span className="text-sm">{feature.text}</span>
+                <span className="text-sm font-medium">{feature.text}</span>
               </div>
             ))}
           </div>
@@ -96,7 +103,7 @@ export default function HomePage() {
           <button
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="btn-press w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-50 text-gray-800 font-semibold py-4 px-6 rounded-2xl shadow-lg hover:shadow-xl disabled:opacity-70 disabled:cursor-not-allowed"
+            className="btn-press w-full flex items-center justify-center gap-3 bg-white dark:bg-white dark:hover:bg-gray-50 text-gray-800 font-semibold py-4 px-6 rounded-2xl shadow-lg border border-gray-200 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {loading ? (
               <>
@@ -117,13 +124,13 @@ export default function HomePage() {
             )}
           </button>
 
-          <p className="text-center text-indigo-400 text-xs mt-6">
+          <p className="text-center text-gray-500 dark:text-indigo-400 text-xs mt-6">
             By signing in, your bookmarks are private and secure
           </p>
         </div>
 
         {/* Bottom text */}
-        <p className="text-center text-indigo-500 text-sm mt-6">
+        <p className="text-center text-gray-400 dark:text-indigo-500 text-sm mt-6">
           Built with Next.js · Supabase · Tailwind CSS
         </p>
       </div>

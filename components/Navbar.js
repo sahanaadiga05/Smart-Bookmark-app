@@ -1,14 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
 export default function Navbar({ user }) {
   const [loggingOut, setLoggingOut] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const supabase = createClient()
   const router = useRouter()
+
+  useEffect(() => setMounted(true), [])
 
   const handleLogout = async () => {
     setLoggingOut(true)
@@ -21,7 +24,7 @@ export default function Navbar({ user }) {
   const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-white/10" style={{ background: 'rgba(15, 12, 41, 0.85)', backdropFilter: 'blur(12px)' }}>
+    <nav className="sticky top-0 z-50 border-b border-gray-200 dark:border-white/10 glass">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
 
@@ -32,7 +35,7 @@ export default function Navbar({ user }) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
               </svg>
             </div>
-            <span className="text-white font-bold text-lg hidden sm:block">Smart Bookmark</span>
+            <span className="text-gray-900 dark:text-white font-bold text-lg hidden sm:block">Smart Bookmark</span>
           </div>
 
           {/* Realtime indicator */}
@@ -44,8 +47,10 @@ export default function Navbar({ user }) {
             <span className="hidden sm:block text-xs font-medium">Live sync</span>
           </div>
 
-          {/* User menu */}
-          <div className="relative">
+          {/* Right section: Theme + User menu */}
+          <div className="flex items-center gap-4">
+            {/* User menu */}
+            <div className="relative">
             <button
               onClick={() => setShowDropdown(!showDropdown)}
               className="flex items-center gap-2 btn-press"
@@ -63,7 +68,7 @@ export default function Navbar({ user }) {
               )}
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className={`w-4 h-4 text-indigo-300 transition-transform duration-200 ${showDropdown ? 'rotate-180' : ''}`}
+                className={`w-4 h-4 text-gray-500 dark:text-indigo-300 transition-transform duration-200 ${showDropdown ? 'rotate-180' : ''}`}
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -82,12 +87,8 @@ export default function Navbar({ user }) {
                 />
 
                 <div
-                  className="absolute right-0 mt-3 w-60 rounded-2xl shadow-2xl z-20 overflow-hidden"
-                  style={{
-                    background: 'rgba(20, 16, 60, 0.97)',
-                    border: '1px solid rgba(99, 102, 241, 0.3)',
-                    animation: 'modalIn 0.2s ease forwards'
-                  }}
+                  className="absolute right-0 mt-3 w-60 rounded-2xl shadow-2xl z-20 overflow-hidden bg-white dark:bg-[#14103c] border border-gray-200 dark:border-indigo-500/30"
+                  style={{ animation: 'modalIn 0.2s ease forwards' }}
                 >
                   {/* User info */}
                   <div className="px-4 py-4 border-b border-white/10">
@@ -100,8 +101,8 @@ export default function Navbar({ user }) {
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-white font-semibold text-sm truncate">{name}</p>
-                        <p className="text-indigo-400 text-xs truncate">{user?.email}</p>
+                        <p className="text-gray-900 dark:text-white font-semibold text-sm truncate">{name}</p>
+                        <p className="text-gray-500 dark:text-indigo-400 text-xs truncate">{user?.email}</p>
                       </div>
                     </div>
                   </div>
@@ -126,6 +127,7 @@ export default function Navbar({ user }) {
                 </div>
               </>
             )}
+            </div>
           </div>
 
         </div>

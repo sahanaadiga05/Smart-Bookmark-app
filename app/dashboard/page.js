@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import Navbar from '@/components/Navbar'
@@ -8,6 +8,28 @@ import BookmarkCard from '@/components/BookmarkCard'
 import AddBookmarkModal from '@/components/AddBookmarkModal'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import StatsPanel from '@/components/StatsPanel'
+
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+
+// Sortable Wrapper Component
+function SortableBookmarkCard(props) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.bookmark.id })
+  
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 'auto',
+    opacity: isDragging ? 0.6 : 1,
+  }
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <BookmarkCard {...props} dragListeners={listeners} dragAttributes={attributes} />
+    </div>
+  )
+}
 
 export default function DashboardPage() {
   const [user, setUser] = useState(null)
@@ -17,7 +39,9 @@ export default function DashboardPage() {
   const [showStats, setShowStats] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTag, setActiveTag] = useState(null)
+  const viewMode = 'grid'
   const [toast, setToast] = useState(null)
+  const searchRef = useRef(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -37,14 +61,89 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { router.push('/'); return }
-      setUser(session.user)
-      await fetchBookmarks(session.user.id)
-      setLoading(false)
+      try {
+        const { data, error } = await supabase.auth.getSession()
+        if (error) throw error
+        if (!data?.session) {
+          router.push('/')
+          return
+        }
+        setUser(data.session.user)
+        await fetchBookmarks(data.session.user.id)
+      } catch (err) {
+        console.error('Session error:', err)
+        await supabase.auth.signOut()
+        router.push('/')
+      } finally {
+        setLoading(false)
+      }
     }
     init()
   }, [])
+
+  // Background Link Checker
+  useEffect(() => {
+    if (bookmarks.length === 0) return
+    if (window.hasRunLinkChecker) return
+    window.hasRunLinkChecker = true
+
+    const runLinkChecker = async () => {
+      try {
+        const ONE_DAY = 24 * 60 * 60 * 1000
+        const now = new Date()
+        
+        // Find 4 bookmarks that need checking (either never checked, or checked > 24 hours ago)
+        const needsChecking = bookmarks
+          .filter(b => !b.last_checked_at || (now - new Date(b.last_checked_at)) > ONE_DAY)
+          .slice(0, 4)
+
+        if (needsChecking.length === 0) return
+
+        const urls = needsChecking.map(b => b.url)
+        const res = await fetch('/api/ping-links', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ urls })
+        })
+
+        if (res.ok) {
+          const { results } = await res.json()
+          let dbErrorDetected = false
+          
+          for (const result of results) {
+            if (dbErrorDetected) break // stop hitting DB if migration is missing
+
+            const targetBookmark = needsChecking.find(b => b.url === result.url)
+            if (!targetBookmark) continue
+
+            const updatePayload = {
+              is_broken: result.is_broken,
+              last_checked_at: new Date().toISOString()
+            }
+
+            const { error: dbError } = await supabase
+              .from('bookmarks')
+              .update(updatePayload)
+              .eq('id', targetBookmark.id)
+
+            if (!dbError) {
+               setBookmarks(prev => prev.map(b => 
+                 b.id === targetBookmark.id ? { ...b, ...updatePayload } : b
+               ))
+            } else {
+               console.warn("Skipping further updates. Make sure you ran the SQL migration to add is_broken and last_checked_at columns.")
+               dbErrorDetected = true
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Link checker failed silently", err)
+      }
+    }
+
+    setTimeout(runLinkChecker, 3000)
+  }, [bookmarks, supabase])
+
 
   // Called by modal with the newly saved bookmark — adds instantly to UI
   const handleAdded = (newBookmark) => {
@@ -72,23 +171,63 @@ export default function DashboardPage() {
     }
   }
 
+  const handleTogglePin = async (bookmarkId, isPinned) => {
+    setBookmarks(prev => prev.map(b => b.id === bookmarkId ? { ...b, is_pinned: isPinned } : b))
+    const { error } = await supabase.from('bookmarks').update({ is_pinned: isPinned }).eq('id', bookmarkId)
+    if (error) {
+      showToast('Failed to pin bookmark. Did you run the SQL migration?', 'error')
+      fetchBookmarks(user.id)
+    }
+  }
+
+  // Drag and Drop Logic
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
+  const handleDragEnd = async (event) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    setBookmarks((items) => {
+      const oldIndex = items.findIndex(i => i.id === active.id)
+      const newIndex = items.findIndex(i => i.id === over.id)
+      const newArray = arrayMove(items, oldIndex, newIndex)
+      
+      const updates = newArray.map((item, index) => ({
+        ...item,
+        sort_order: newArray.length - index
+      }))
+      
+      supabase.from('bookmarks').upsert(updates).then(({error}) => {
+        if (error) showToast('Failed to save arrangement. Did you run the SQL migration?', 'error')
+      })
+      
+      return newArray
+    })
+  }
+
   const allTags = [...new Set(bookmarks.flatMap(b => b.tags || []))]
 
   const filteredBookmarks = bookmarks.filter(b => {
-    const matchesSearch =
-      b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      b.url.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = b.title.toLowerCase().includes(searchQuery.toLowerCase()) || b.url.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesTag = !activeTag || (b.tags || []).includes(activeTag)
     return matchesSearch && matchesTag
+  }).sort((a, b) => {
+    if (a.is_pinned && !b.is_pinned) return -1
+    if (!a.is_pinned && b.is_pinned) return 1
+    if (a.sort_order !== b.sort_order) return (b.sort_order || 0) - (a.sort_order || 0)
+    return new Date(b.created_at) - new Date(a.created_at)
   })
 
   if (loading) return <LoadingSpinner />
 
   return (
-    <div className="gradient-bg min-h-screen">
+    <div className="min-h-screen bg-gray-50 dark:bg-transparent">
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 bg-indigo-600 rounded-full opacity-10 blur-3xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-600 rounded-full opacity-10 blur-3xl"></div>
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-indigo-200 dark:bg-indigo-600 rounded-full opacity-30 dark:opacity-10 blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-200 dark:bg-purple-600 rounded-full opacity-30 dark:opacity-10 blur-3xl"></div>
       </div>
 
       <div className="relative z-10">
@@ -99,8 +238,8 @@ export default function DashboardPage() {
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div className="fade-in">
-              <h1 className="text-3xl font-bold text-white">My Bookmarks</h1>
-              <p className="text-indigo-400 mt-1">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">My Bookmarks</h1>
+              <p className="text-gray-500 dark:text-indigo-400 mt-1">
                 {bookmarks.length} bookmark{bookmarks.length !== 1 ? 's' : ''} saved
               </p>
             </div>
@@ -110,12 +249,12 @@ export default function DashboardPage() {
                 onClick={() => setShowStats(!showStats)}
                 className={`btn-press flex items-center gap-2 font-semibold px-4 py-3 rounded-2xl border transition-all ${
                   showStats
-                    ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300'
-                    : 'bg-white/10 border-white/20 text-indigo-300 hover:bg-white/20'
+                    ? 'bg-indigo-100 dark:bg-indigo-500/20 border-indigo-200 dark:border-indigo-500/50 text-indigo-700 dark:text-indigo-300'
+                    : 'bg-white dark:bg-white/10 border-gray-200 dark:border-white/20 text-gray-700 dark:text-indigo-300 hover:bg-gray-50 dark:hover:bg-white/20'
                 }`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2-2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
                 <span className="hidden sm:block">Stats</span>
               </button>
@@ -141,20 +280,21 @@ export default function DashboardPage() {
           {bookmarks.length > 0 && (
             <div className="mb-8 space-y-3 fade-in">
               <div className="relative max-w-sm">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-400">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-indigo-400">
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
                 <input
+                  ref={searchRef}
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search bookmarks..."
-                  className="w-full bg-white/10 border border-white/20 focus:border-indigo-500 text-white placeholder-indigo-400/60 rounded-xl pl-12 pr-4 py-3 outline-none"
+                  className="w-full bg-white dark:bg-white/10 border border-gray-200 dark:border-white/20 focus:border-indigo-500 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-indigo-400/60 rounded-xl pl-12 pr-12 py-3 outline-none"
                 />
                 {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-400 hover:text-white">
+                  <button onClick={() => setSearchQuery('')} className="absolute right-3 z-10 top-1/2 -translate-y-1/2 text-gray-400 dark:text-indigo-400 hover:text-gray-900 dark:hover:text-white">
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -167,7 +307,7 @@ export default function DashboardPage() {
                   <button
                     onClick={() => setActiveTag(null)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-medium btn-press transition-all ${
-                      !activeTag ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'bg-white/10 text-indigo-300 hover:bg-white/20'
+                      !activeTag ? 'bg-indigo-600 dark:bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'bg-white dark:bg-white/10 text-gray-600 dark:text-indigo-300 hover:bg-gray-50 dark:hover:bg-white/20'
                     }`}
                   >
                     All
@@ -177,7 +317,7 @@ export default function DashboardPage() {
                       key={tag}
                       onClick={() => setActiveTag(activeTag === tag ? null : tag)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-medium btn-press transition-all ${
-                        activeTag === tag ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'bg-white/10 text-indigo-300 hover:bg-white/20'
+                        activeTag === tag ? 'bg-indigo-600 dark:bg-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'bg-white dark:bg-white/10 text-gray-600 dark:text-indigo-300 hover:bg-gray-50 dark:hover:bg-white/20 border border-gray-200 dark:border-transparent'
                       }`}
                     >
                       #{tag}
@@ -191,13 +331,13 @@ export default function DashboardPage() {
           {/* Empty state */}
           {bookmarks.length === 0 && (
             <div className="flex flex-col items-center justify-center py-24 fade-in">
-              <div className="float w-24 h-24 bg-gradient-to-br from-indigo-500/20 to-purple-600/20 border border-indigo-500/30 rounded-3xl flex items-center justify-center mb-6">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="float w-24 h-24 bg-gradient-to-br from-indigo-100 dark:from-indigo-500/20 to-purple-100 dark:to-purple-600/20 border border-indigo-200 dark:border-indigo-500/30 rounded-3xl flex items-center justify-center mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 text-indigo-500 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                 </svg>
               </div>
-              <h3 className="text-white text-2xl font-bold mb-2">No bookmarks yet</h3>
-              <p className="text-indigo-400 text-center mb-8 max-w-sm">
+              <h3 className="text-gray-900 dark:text-white text-2xl font-bold mb-2">No bookmarks yet</h3>
+              <p className="text-gray-500 dark:text-indigo-400 text-center mb-8 max-w-sm">
                 Start saving your favorite websites! Click the button below to add your first bookmark.
               </p>
               <button
@@ -215,24 +355,34 @@ export default function DashboardPage() {
           {/* No results */}
           {bookmarks.length > 0 && filteredBookmarks.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 fade-in">
-              <div className="text-5xl mb-4">🔍</div>
-              <h3 className="text-white text-xl font-bold mb-2">No results found</h3>
-              <p className="text-indigo-400 text-sm">
+              <div className="text-5xl mb-4 opacity-80">🔍</div>
+              <h3 className="text-gray-900 dark:text-white text-xl font-bold mb-2">No results found</h3>
+              <p className="text-gray-500 dark:text-indigo-400 text-sm">
                 {activeTag ? `No bookmarks tagged #${activeTag}` : `No bookmarks match "${searchQuery}"`}
               </p>
-              <button onClick={() => { setSearchQuery(''); setActiveTag(null) }} className="mt-4 text-indigo-400 hover:text-white text-sm underline">
+              <button onClick={() => { setSearchQuery(''); setActiveTag(null) }} className="mt-4 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-white text-sm underline">
                 Clear filters
               </button>
             </div>
           )}
 
-          {/* Bookmarks Grid */}
+          {/* Bookmarks Display */}
           {filteredBookmarks.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filteredBookmarks.map((bookmark) => (
-                <BookmarkCard key={bookmark.id} bookmark={bookmark} onDelete={handleDelete} />
-              ))}
-            </div>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <div className={viewMode === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" : "flex flex-col gap-3"}>
+                <SortableContext items={filteredBookmarks.map(b => b.id)} strategy={viewMode === 'grid' ? rectSortingStrategy : verticalListSortingStrategy}>
+                  {filteredBookmarks.map((bookmark) => (
+                    <SortableBookmarkCard 
+                      key={bookmark.id} 
+                      bookmark={bookmark} 
+                      onDelete={handleDelete} 
+                      onTogglePin={handleTogglePin}
+                      viewMode={viewMode} 
+                    />
+                  ))}
+                </SortableContext>
+              </div>
+            </DndContext>
           )}
 
         </main>
