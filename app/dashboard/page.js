@@ -41,6 +41,7 @@ export default function DashboardPage() {
   const [activeTag, setActiveTag] = useState(null)
   const viewMode = 'grid'
   const [toast, setToast] = useState(null)
+  const [extensionUrl, setExtensionUrl] = useState('')
   const searchRef = useRef(null)
   const router = useRouter()
   const supabase = createClient()
@@ -59,6 +60,19 @@ export default function DashboardPage() {
     if (!error && data) setBookmarks(data)
   }, [])
 
+  // Catch Chrome Extension URL
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const addUrl = params.get('addUrl')
+      if (addUrl) {
+        setExtensionUrl(addUrl)
+        setShowModal(true)
+        window.history.replaceState({}, document.title, window.location.pathname)
+      }
+    }
+  }, [])
+
   useEffect(() => {
     const init = async () => {
       try {
@@ -71,8 +85,8 @@ export default function DashboardPage() {
         setUser(data.session.user)
         await fetchBookmarks(data.session.user.id)
       } catch (err) {
-        console.error('Session error:', err)
-        await supabase.auth.signOut()
+        console.warn('Session error (silenced):', err.message)
+        await supabase.auth.signOut().catch(() => {})
         router.push('/')
       } finally {
         setLoading(false)
@@ -391,8 +405,12 @@ export default function DashboardPage() {
       {showModal && (
         <AddBookmarkModal
           userId={user.id}
-          onClose={() => setShowModal(false)}
+          onClose={() => {
+            setShowModal(false)
+            setExtensionUrl('')
+          }}
           onAdded={handleAdded}
+          initialUrl={extensionUrl}
         />
       )}
 

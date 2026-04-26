@@ -68,10 +68,24 @@ export async function GET(request) {
           }
         });
       }
+      
+      // Aggressive fallback: grab visible text from the page
+      if (!description) {
+        $('script, style, noscript, nav, header, footer').remove();
+        const mainText = $('main, article, [role="main"]').text().replace(/\s+/g, ' ').trim();
+        if (mainText && mainText.length > 20) {
+          description = mainText;
+        } else {
+          const bodyText = $('body').text().replace(/\s+/g, ' ').trim();
+          if (bodyText && bodyText.length > 20) {
+            description = bodyText;
+          }
+        }
+      }
     }
 
     // If initial fetch failed, OR if it succeeded but the site hid its description behind React/Cloudflare
-    if (fallbackToMicrolink || (!description && !title)) {
+    if (fallbackToMicrolink || !description || !title) {
       try {
         const microRes = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}`);
         if (microRes.ok) {
@@ -85,6 +99,25 @@ export async function GET(request) {
       } catch (err) {
          console.error('Microlink fallback error:', err);
       }
+    }
+
+    const isUseless = !description || /^loading[\.…]*$/i.test(description.trim());
+    if (isUseless) {
+      try {
+        const baseUrl = new URL(url).origin;
+        if (baseUrl !== url) {
+          const rootRes = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(baseUrl)}`);
+          if (rootRes.ok) {
+            const rootData = await rootRes.json();
+            if (rootData.status === 'success' && rootData.data.description) {
+              description = rootData.data.description;
+              if (!title || /^loading[\.…]*$/i.test(title.trim())) {
+                title = rootData.data.title;
+              }
+            }
+          }
+        }
+      } catch (e) {}
     }
 
     if (description && description.length > 150) {

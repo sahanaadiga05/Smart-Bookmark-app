@@ -5,8 +5,8 @@ import { createClient } from '@/lib/supabase'
 
 const PRESET_TAGS = ['Work', 'Personal', 'Design', 'Dev', 'News', 'Learning', 'Tools', 'Fun']
 
-export default function AddBookmarkModal({ userId, onClose, onAdded }) {
-  const [url, setUrl] = useState('')
+export default function AddBookmarkModal({ userId, onClose, onAdded, initialUrl = '' }) {
+  const [url, setUrl] = useState(initialUrl)
   const [title, setTitle] = useState('')
   const [tags, setTags] = useState([])
   const [customTag, setCustomTag] = useState('')
@@ -89,15 +89,31 @@ export default function AddBookmarkModal({ userId, onClose, onAdded }) {
 
     setLoading(true)
 
+    let finalSummary = summary.trim();
+    let finalFavicon = previewData?.favicon || null;
+
+    if (!finalSummary) {
+      try {
+        const metaRes = await fetch(`/api/metadata?url=${encodeURIComponent(cleanUrl)}`)
+        if (metaRes.ok) {
+          const data = await metaRes.json()
+          if (data.description) finalSummary = data.description
+          if (data.favicon) finalFavicon = data.favicon
+        }
+      } catch (e) {
+        console.error('Fetch on submit failed', e)
+      }
+    }
+
     const { data, error: insertError } = await supabase
       .from('bookmarks')
       .insert({ 
         user_id: userId, 
         url: cleanUrl, 
         title: title.trim(), 
-        summary: summary.trim(),
+        summary: finalSummary,
         tags,
-        favicon: previewData?.favicon || null
+        favicon: finalFavicon
       })
       .select()
       .single()
@@ -166,13 +182,20 @@ export default function AddBookmarkModal({ userId, onClose, onAdded }) {
             
             {previewData && metadataFetched && !metadataLoading && (
               <div className="mt-3 bg-white/5 border border-white/10 rounded-xl overflow-hidden shadow-inner fade-in">
-                 <div className="p-3 bg-black/20 flex items-center gap-3 border-t border-white/5">
-                   {previewData.favicon ? (
-                     <img src={previewData.favicon} className="w-5 h-5 rounded-sm flex-shrink-0 bg-white" alt="icon" />
-                   ) : (
-                     <div className="w-5 h-5 rounded bg-white/10 flex-shrink-0"></div>
+                 <div className="p-3 bg-black/20 flex flex-col gap-2 border-t border-white/5">
+                   <div className="flex items-center gap-3">
+                     {previewData.favicon ? (
+                       <img src={previewData.favicon} className="w-5 h-5 rounded-sm flex-shrink-0 bg-white" alt="icon" />
+                     ) : (
+                       <div className="w-5 h-5 rounded bg-white/10 flex-shrink-0"></div>
+                     )}
+                     <span className="text-white text-xs font-medium truncate opacity-90">{previewData.title || title || 'No title provided'}</span>
+                   </div>
+                   {previewData.description && (
+                     <p className="text-gray-400 text-[11px] line-clamp-2 leading-relaxed ml-8">
+                       {previewData.description}
+                     </p>
                    )}
-                   <span className="text-white text-xs font-medium truncate opacity-90">{previewData.title || title || 'No title provided'}</span>
                  </div>
               </div>
             )}

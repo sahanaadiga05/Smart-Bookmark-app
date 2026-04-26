@@ -22,8 +22,8 @@ export default function HomePage() {
           setCheckingAuth(false)
         }
       } catch (err) {
-        console.error('Auth error:', err)
-        await supabase.auth.signOut() // Clear broken state
+        console.warn('Auth error (silenced):', err.message)
+        await supabase.auth.signOut().catch(() => {}) // Clear broken state
         setCheckingAuth(false)
       }
     }
