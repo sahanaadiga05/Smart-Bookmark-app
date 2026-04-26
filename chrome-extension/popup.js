@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       saveBtn.addEventListener('click', () => {
         // Open the Next.js app in a new tab with the URL as a query parameter
-        const appUrl = `http://localhost:3000/dashboard?addUrl=${encodeURIComponent(currentTab.url)}`;
+        const appUrl = `https://smart-bookmark-app-seven-eta.vercel.app/dashboard?addUrl=${encodeURIComponent(currentTab.url)}`;
         chrome.tabs.create({ url: appUrl });
       });
     } else {
