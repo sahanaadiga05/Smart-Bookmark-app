@@ -6,12 +6,12 @@ import { motion } from 'framer-motion'
 
 const PRESET_TAGS = ['Work', 'Personal', 'Design', 'Dev', 'News', 'Learning', 'Tools', 'Fun']
 
-export default function AddBookmarkModal({ userId, onClose, onAdded, initialUrl = '' }) {
-  const [url, setUrl] = useState(initialUrl)
-  const [title, setTitle] = useState('')
-  const [tags, setTags] = useState([])
+export default function AddBookmarkModal({ userId, onClose, onAdded, onUpdated, initialUrl = '', bookmarkToEdit = null }) {
+  const [url, setUrl] = useState(bookmarkToEdit ? bookmarkToEdit.url : initialUrl)
+  const [title, setTitle] = useState(bookmarkToEdit ? bookmarkToEdit.title : '')
+  const [tags, setTags] = useState(bookmarkToEdit ? bookmarkToEdit.tags || [] : [])
   const [customTag, setCustomTag] = useState('')
-  const [summary, setSummary] = useState('')
+  const [summary, setSummary] = useState(bookmarkToEdit ? bookmarkToEdit.summary || '' : '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const supabase = createClient()
@@ -106,24 +106,52 @@ export default function AddBookmarkModal({ userId, onClose, onAdded, initialUrl 
       }
     }
 
-    const { data, error: insertError } = await supabase
-      .from('bookmarks')
-      .insert({ 
-        user_id: userId, 
-        url: cleanUrl, 
-        title: title.trim(), 
-        summary: finalSummary,
-        tags,
-        favicon: finalFavicon
-      })
-      .select()
-      .single()
+    let dbError;
+    let returnedData;
 
-    if (insertError) {
-      setError('Failed to add bookmark. Please try again.')
+    if (bookmarkToEdit) {
+      const { data, error } = await supabase
+        .from('bookmarks')
+        .update({ 
+          url: cleanUrl, 
+          title: title.trim(), 
+          summary: finalSummary,
+          tags,
+          favicon: finalFavicon
+        })
+        .eq('id', bookmarkToEdit.id)
+        .select()
+        .single()
+        
+      dbError = error;
+      returnedData = data;
+    } else {
+      const { data, error } = await supabase
+        .from('bookmarks')
+        .insert({ 
+          user_id: userId, 
+          url: cleanUrl, 
+          title: title.trim(), 
+          summary: finalSummary,
+          tags,
+          favicon: finalFavicon
+        })
+        .select()
+        .single()
+        
+      dbError = error;
+      returnedData = data;
+    }
+
+    if (dbError) {
+      setError(`Failed to ${bookmarkToEdit ? 'update' : 'add'} bookmark. Please try again.`)
       setLoading(false)
     } else {
-      onAdded(data) // ← pass new bookmark back instantly
+      if (bookmarkToEdit && onUpdated) {
+        onUpdated(returnedData)
+      } else if (onAdded) {
+        onAdded(returnedData)
+      }
       onClose()
     }
   }
@@ -150,7 +178,7 @@ export default function AddBookmarkModal({ userId, onClose, onAdded, initialUrl 
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
             </div>
-            <h2 className="text-gray-900 dark:text-white text-xl font-bold">Add Bookmark</h2>
+            <h2 className="text-gray-900 dark:text-white text-xl font-bold">{bookmarkToEdit ? 'Edit Bookmark' : 'Add Bookmark'}</h2>
           </div>
           <button onClick={onClose} className="w-8 h-8 bg-gray-100/50 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 rounded-xl flex items-center justify-center text-gray-500 dark:text-orange-300 hover:text-gray-900 dark:hover:text-white btn-press transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -284,7 +312,7 @@ export default function AddBookmarkModal({ userId, onClose, onAdded, initialUrl 
               ) : (
                 <><svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                </svg>Save Bookmark</>
+                </svg>{bookmarkToEdit ? 'Save Changes' : 'Save Bookmark'}</>
               )}
             </button>
           </div>

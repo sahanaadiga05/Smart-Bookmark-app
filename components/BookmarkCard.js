@@ -20,7 +20,7 @@ const getTagColor = (tag) => {
   return TAG_COLORS[Math.abs(hash) % TAG_COLORS.length]
 }
 
-export default function BookmarkCard({ bookmark, onDelete, onTogglePin, viewMode = 'grid', dragListeners, dragAttributes }) {
+export default function BookmarkCard({ bookmark, onDelete, onEdit, onTogglePin, viewMode = 'grid', dragListeners, dragAttributes }) {
   const [deleting, setDeleting] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
 
@@ -127,6 +127,15 @@ export default function BookmarkCard({ bookmark, onDelete, onTogglePin, viewMode
 
         {/* Action Buttons */}
         <div className={`opacity-0 group-hover:opacity-100 flex items-center gap-1 shrink-0 ${viewMode === 'list' ? 'ml-auto mt-0' : 'absolute top-3 right-3'}`}>
+          <button
+            onClick={() => onEdit(bookmark)}
+            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 btn-press transition-colors bg-gray-100 hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/20 text-gray-500 dark:text-orange-300"
+            title="Edit Bookmark"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </button>
           <button
             onClick={() => onTogglePin(bookmark.id, !bookmark.is_pinned)}
             className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 btn-press transition-colors ${bookmark.is_pinned ? 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 opacity-100' : 'bg-gray-100 hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/20 text-gray-500 dark:text-orange-300'}`}

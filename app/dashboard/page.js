@@ -35,6 +35,7 @@ export default function DashboardPage() {
   const [bookmarks, setBookmarks] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [editingBookmark, setEditingBookmark] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTag, setActiveTag] = useState(null)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
@@ -163,6 +164,22 @@ export default function DashboardPage() {
       return [newBookmark, ...prev]
     })
     showToast('Bookmark added! ✨')
+  }
+
+  const handleUpdated = (updatedBookmark) => {
+    setBookmarks(prev => prev.map(b => b.id === updatedBookmark.id ? updatedBookmark : b))
+    showToast('Bookmark updated! ✨')
+  }
+
+  const handleEdit = (bookmark) => {
+    setEditingBookmark(bookmark)
+    setShowModal(true)
+  }
+
+  const openAddModal = () => {
+    setEditingBookmark(null)
+    setExtensionUrl('')
+    setShowModal(true)
   }
 
   const handleDelete = async (bookmarkId) => {
@@ -297,7 +314,7 @@ export default function DashboardPage() {
       <motion.button
         whileHover={{ scale: 1.02, y: -1 }}
         whileTap={{ scale: 0.98 }}
-        onClick={() => { setShowModal(true); setShowMobileMenu(false); }}
+        onClick={() => { openAddModal(); setShowMobileMenu(false); }}
         className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white font-semibold px-4 py-3.5 rounded-2xl shadow-lg glow mb-8"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -395,7 +412,7 @@ export default function DashboardPage() {
             <span className="font-bold">Smart Bookmark</span>
           </div>
           <button 
-            onClick={() => setShowModal(true)}
+            onClick={openAddModal}
             className="bg-orange-600 text-white p-2 rounded-xl shadow-lg glow btn-press"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
@@ -479,7 +496,7 @@ export default function DashboardPage() {
                   Start building your collection by adding your first bookmark.
                 </p>
                 <button
-                  onClick={() => setShowModal(true)}
+                  onClick={openAddModal}
                   className="bg-white dark:bg-white/10 hover:bg-gray-50 dark:hover:bg-white/20 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white font-medium px-6 py-2.5 rounded-xl transition-colors btn-press shadow-sm"
                 >
                   Add Bookmark
@@ -516,6 +533,7 @@ export default function DashboardPage() {
                         key={bookmark.id} 
                         bookmark={bookmark} 
                         onDelete={handleDelete} 
+                        onEdit={handleEdit}
                         onTogglePin={handleTogglePin}
                         viewMode={viewMode} 
                       />
@@ -537,9 +555,12 @@ export default function DashboardPage() {
             onClose={() => {
               setShowModal(false)
               setExtensionUrl('')
+              setEditingBookmark(null)
             }}
             onAdded={handleAdded}
+            onUpdated={handleUpdated}
             initialUrl={extensionUrl}
+            bookmarkToEdit={editingBookmark}
           />
         )}
       </AnimatePresence>
