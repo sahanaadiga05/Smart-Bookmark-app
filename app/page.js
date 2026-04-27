@@ -130,7 +130,7 @@ export default function HomePage() {
         {/* Card */}
         <motion.div 
           variants={itemVariants}
-          className="glass rounded-3xl p-8 md:p-10 relative z-10 bg-white/70 shadow-xl dark:shadow-none dark:bg-white/5"
+          className="glass animated-border-yellow rounded-3xl p-8 md:p-10 relative z-10 bg-white/70 shadow-xl dark:shadow-none dark:bg-black/40"
         >
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-3">

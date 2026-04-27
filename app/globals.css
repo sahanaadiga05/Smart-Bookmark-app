@@ -111,7 +111,7 @@
 
 /* Glass morphism */
 .glass {
-  @apply bg-white/70 dark:bg-white/5 backdrop-blur-xl border border-gray-200/50 dark:border-white/10 shadow-sm dark:shadow-none;
+  @apply bg-white/70 dark:bg-black/30 backdrop-blur-xl border border-yellow-500/50 shadow-sm dark:shadow-none;
 }
 
 /* Rotate animation for spinner */
@@ -129,4 +129,38 @@
 }
 .float {
   animation: float 3s ease-in-out infinite;
+}
+
+/* Fast Running Yellow Border Animation */
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes spin-border {
+  to { --angle: 360deg; }
+}
+
+.animated-border-yellow {
+  position: relative;
+  /* Remove default static borders if they exist */
+  border-color: transparent !important;
+}
+
+.animated-border-yellow::before {
+  content: '';
+  position: absolute;
+  inset: -1px; /* Outward expansion to act as border */
+  border-radius: inherit;
+  padding: 2px; /* Border thickness */
+  background: conic-gradient(from var(--angle), transparent 60%, #eab308 100%);
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: spin-border 1.5s linear infinite;
+  z-index: 10;
+  pointer-events: none;
 }

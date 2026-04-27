@@ -179,7 +179,7 @@ export default function AddBookmarkModal({ userId, onClose, onAdded, initialUrl 
                 </svg>
               </div>
               <input type="text" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://example.com"
-                className="w-full bg-white dark:bg-white/10 border border-gray-200 dark:border-white/20 focus:border-orange-500 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-orange-400/60 rounded-xl pl-10 pr-4 py-3 outline-none text-sm transition-colors"
+                className="w-full bg-white dark:bg-white/10 border border-yellow-500/50 focus:border-orange-500 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-orange-400/60 rounded-xl pl-10 pr-4 py-3 outline-none text-sm transition-colors"
                 required autoFocus />
             </div>
             
@@ -220,7 +220,7 @@ export default function AddBookmarkModal({ userId, onClose, onAdded, initialUrl 
                 </svg>
               </div>
               <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="My awesome bookmark"
-                className="w-full bg-white dark:bg-white/10 border border-gray-200 dark:border-white/20 focus:border-orange-500 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-orange-400/60 rounded-xl pl-10 pr-4 py-3 outline-none text-sm transition-colors"
+                className="w-full bg-white dark:bg-white/10 border border-yellow-500/50 focus:border-orange-500 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-orange-400/60 rounded-xl pl-10 pr-4 py-3 outline-none text-sm transition-colors"
                 required />
             </div>
           </div>
@@ -259,7 +259,7 @@ export default function AddBookmarkModal({ userId, onClose, onAdded, initialUrl 
               <input type="text" value={customTag} onChange={(e) => setCustomTag(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomTag() } }}
                 placeholder="Custom tag..."
-                className="flex-1 bg-white dark:bg-white/10 border border-gray-200 dark:border-white/20 focus:border-orange-500 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-orange-400/60 rounded-xl px-3 py-2 outline-none text-xs transition-colors" />
+                className="flex-1 bg-white dark:bg-white/10 border border-yellow-500/50 focus:border-orange-500 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-orange-400/60 rounded-xl px-3 py-2 outline-none text-xs transition-colors" />
               <button type="button" onClick={addCustomTag} className="bg-white dark:bg-white/10 border border-gray-200 dark:border-transparent hover:bg-gray-50 dark:hover:bg-white/20 text-gray-600 dark:text-orange-300 px-3 py-2 rounded-xl text-xs btn-press">Add</button>
             </div>
           </div>

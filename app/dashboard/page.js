@@ -264,7 +264,7 @@ export default function DashboardPage() {
           <span className="text-gray-900 dark:text-white font-bold tracking-tight">Smart Bookmark</span>
         </div>
 
-        <div className="flex items-center gap-3 p-3 bg-white/50 dark:bg-white/5 rounded-2xl border border-gray-200 dark:border-white/10 shadow-sm">
+        <div className="flex items-center gap-3 p-3 bg-white/50 dark:bg-white/5 rounded-2xl border border-yellow-500/50 shadow-sm">
           {avatarUrl ? (
             <img src={avatarUrl} alt={name} className="w-10 h-10 rounded-full ring-2 ring-orange-500/50" />
           ) : (
@@ -306,32 +306,7 @@ export default function DashboardPage() {
         Add Bookmark
       </motion.button>
 
-      {/* Search */}
-      <div className="mb-8">
-        <h3 className="text-xs font-semibold text-gray-500 dark:text-orange-500/80 uppercase tracking-wider mb-3">Search</h3>
-        <div className="relative">
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-orange-400">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-          <input
-            ref={searchRef}
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search links..."
-            className="w-full bg-white dark:bg-black/40 border border-gray-200 dark:border-white/10 focus:border-orange-500 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-orange-400/50 rounded-xl pl-9 pr-8 py-2.5 outline-none text-sm shadow-inner transition-colors"
-          />
-          {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="absolute right-3 z-10 top-1/2 -translate-y-1/2 text-gray-400 dark:text-orange-400 hover:text-gray-900 dark:hover:text-white">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          )}
-        </div>
-      </div>
+
 
       {/* Tags */}
       {allTags.length > 0 && (
@@ -380,7 +355,7 @@ export default function DashboardPage() {
 
       {/* Desktop Sidebar */}
       <aside className="w-72 hidden lg:block border-r border-gray-200 dark:border-white/10 glass p-6 z-20 relative flex-shrink-0">
-        <SidebarContent />
+        {SidebarContent()}
       </aside>
 
       {/* Mobile Drawer */}
@@ -402,7 +377,7 @@ export default function DashboardPage() {
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
-              <SidebarContent />
+              {SidebarContent()}
             </motion.aside>
           </>
         )}
@@ -433,15 +408,39 @@ export default function DashboardPage() {
             
             {/* Header Area */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-20 fade-in">
-              <div>
-                <h1 className="text-5xl font-black text-gray-900 dark:text-white tracking-tight">
+              <div className="flex-1 w-full max-w-xl">
+                <h1 className="text-5xl font-black text-gray-900 dark:text-white tracking-tight mb-6">
                   {activeTag ? `#${activeTag}` : 'All Bookmarks'}
                 </h1>
+                
+                {/* Search Box */}
+                <div className="relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-orange-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <input
+                    ref={searchRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search your collection..."
+                    className="w-full bg-white dark:bg-black/40 border border-yellow-500/50 focus:border-orange-500 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-orange-400/50 rounded-2xl pl-12 pr-10 py-3.5 outline-none text-base shadow-sm transition-colors"
+                  />
+                  {searchQuery && (
+                    <button onClick={() => setSearchQuery('')} className="absolute right-4 z-10 top-1/2 -translate-y-1/2 text-gray-400 dark:text-orange-400 hover:text-gray-900 dark:hover:text-white">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Stats Boxes beside heading */}
               <div className="flex items-center gap-4">
-                <div className="bg-white/50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-3xl px-6 py-4 flex items-center gap-4 shadow-md">
+                <div className="bg-white/50 dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-3xl px-6 py-4 flex items-center gap-4 shadow-md animated-border-yellow">
                   <div className="w-14 h-14 bg-orange-500/20 rounded-2xl flex items-center justify-center shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
@@ -453,7 +452,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="bg-white/50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-3xl px-6 py-4 flex items-center gap-4 shadow-md">
+                <div className="bg-white/50 dark:bg-black/40 border border-gray-200 dark:border-white/10 rounded-3xl px-6 py-4 flex items-center gap-4 shadow-md animated-border-yellow">
                   <div className="w-14 h-14 bg-red-500/20 rounded-2xl flex items-center justify-center shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-5 5a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2z" />
