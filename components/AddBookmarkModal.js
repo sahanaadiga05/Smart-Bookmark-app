@@ -6,12 +6,12 @@ import { motion } from 'framer-motion'
 
 const PRESET_TAGS = ['Work', 'Personal', 'Design', 'Dev', 'News', 'Learning', 'Tools', 'Fun']
 
-export default function AddBookmarkModal({ userId, onClose, onAdded, onUpdated, initialUrl = '', bookmarkToEdit = null }) {
+export default function AddBookmarkModal({ userId, onClose, onAdded, initialUrl = '', bookmarkToEdit = null, onUpdated }) {
   const [url, setUrl] = useState(bookmarkToEdit ? bookmarkToEdit.url : initialUrl)
   const [title, setTitle] = useState(bookmarkToEdit ? bookmarkToEdit.title : '')
-  const [tags, setTags] = useState(bookmarkToEdit ? bookmarkToEdit.tags || [] : [])
+  const [tags, setTags] = useState(bookmarkToEdit ? (bookmarkToEdit.tags || []) : [])
   const [customTag, setCustomTag] = useState('')
-  const [summary, setSummary] = useState(bookmarkToEdit ? bookmarkToEdit.summary || '' : '')
+  const [summary, setSummary] = useState(bookmarkToEdit ? (bookmarkToEdit.summary || '') : '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const supabase = createClient()
@@ -23,6 +23,18 @@ export default function AddBookmarkModal({ userId, onClose, onAdded, onUpdated, 
 
   useEffect(() => {
     const cleanUrl = url.startsWith('http') ? url : (url ? `https://${url}` : '')
+    
+    // Skip fetching if editing and URL hasn't changed
+    if (bookmarkToEdit && cleanUrl === bookmarkToEdit.url) {
+      setPreviewData({
+        title: bookmarkToEdit.title,
+        description: bookmarkToEdit.summary,
+        favicon: bookmarkToEdit.favicon
+      })
+      setMetadataFetched(true)
+      return
+    }
+
     if (!isValidUrl(cleanUrl)) {
        setPreviewData(null)
        setMetadataFetched(false)
@@ -37,7 +49,7 @@ export default function AddBookmarkModal({ userId, onClose, onAdded, onUpdated, 
     const timeoutId = setTimeout(async () => {
       try {
         const metadataPromise = fetch(`/api/metadata?url=${encodeURIComponent(cleanUrl)}`).catch(e => null)
-        const duplicatePromise = supabase.from('bookmarks').select('title').eq('user_id', userId).eq('url', cleanUrl).limit(1).maybeSingle()
+        const duplicatePromise = supabase.from('bookmarks').select('title').eq('user_id', userId).eq('url', cleanUrl).limit(1).maybeSingle().catch(e => ({ error: e, data: null }))
 
         const [metaRes, dupRes] = await Promise.all([metadataPromise, duplicatePromise])
 
@@ -53,7 +65,7 @@ export default function AddBookmarkModal({ userId, onClose, onAdded, onUpdated, 
           setMetadataFetched(true)
         }
       } catch (err) {
-        console.error("Fetch metadata or duplicate check error", err)
+        console.warn("Fetch metadata or duplicate check error", err)
       } finally {
         setMetadataLoading(false)
       }
@@ -102,15 +114,12 @@ export default function AddBookmarkModal({ userId, onClose, onAdded, onUpdated, 
           if (data.favicon) finalFavicon = data.favicon
         }
       } catch (e) {
-        console.error('Fetch on submit failed', e)
+        console.warn('Fetch on submit failed', e)
       }
     }
 
-    let dbError;
-    let returnedData;
-
     if (bookmarkToEdit) {
-      const { data, error } = await supabase
+      const { data, error: updateError } = await supabase
         .from('bookmarks')
         .update({ 
           url: cleanUrl, 
@@ -122,11 +131,16 @@ export default function AddBookmarkModal({ userId, onClose, onAdded, onUpdated, 
         .eq('id', bookmarkToEdit.id)
         .select()
         .single()
-        
-      dbError = error;
-      returnedData = data;
+
+      if (updateError) {
+        setError('Failed to update bookmark. Please try again.')
+        setLoading(false)
+      } else {
+        if (onUpdated) onUpdated(data)
+        onClose()
+      }
     } else {
-      const { data, error } = await supabase
+      const { data, error: insertError } = await supabase
         .from('bookmarks')
         .insert({ 
           user_id: userId, 
@@ -138,21 +152,14 @@ export default function AddBookmarkModal({ userId, onClose, onAdded, onUpdated, 
         })
         .select()
         .single()
-        
-      dbError = error;
-      returnedData = data;
-    }
 
-    if (dbError) {
-      setError(`Failed to ${bookmarkToEdit ? 'update' : 'add'} bookmark. Please try again.`)
-      setLoading(false)
-    } else {
-      if (bookmarkToEdit && onUpdated) {
-        onUpdated(returnedData)
-      } else if (onAdded) {
-        onAdded(returnedData)
+      if (insertError) {
+        setError('Failed to add bookmark. Please try again.')
+        setLoading(false)
+      } else {
+        onAdded(data)
+        onClose()
       }
-      onClose()
     }
   }
 

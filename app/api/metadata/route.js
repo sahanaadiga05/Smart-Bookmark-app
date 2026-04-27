@@ -53,7 +53,7 @@ export async function GET(request) {
       if (!favicon) {
          try {
            const domain = new URL(url).hostname;
-           favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+           favicon = `https://icons.duckduckgo.com/ip3/${domain}.ico`;
          } catch (e) { favicon = ''; }
       }
 
