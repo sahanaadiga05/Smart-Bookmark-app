@@ -150,16 +150,7 @@ export default function BookmarkCard({ bookmark, onDelete, onTogglePin, onEdit, 
             )}
           </button>
           
-          <button
-            onClick={() => onEdit && onEdit(bookmark)}
-            className="w-8 h-8 bg-blue-100 hover:bg-blue-200 dark:bg-blue-500/20 dark:hover:bg-blue-500/40 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center shrink-0 btn-press transition-colors"
-            title="Edit bookmark"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-            </svg>
-          </button>
-          
+
           <button
             onClick={() => setShowConfirm(true)}
             className="w-8 h-8 bg-red-100 hover:bg-red-200 dark:bg-red-500/20 dark:hover:bg-red-500/40 text-red-600 dark:text-red-400 rounded-xl flex items-center justify-center shrink-0 btn-press transition-colors"

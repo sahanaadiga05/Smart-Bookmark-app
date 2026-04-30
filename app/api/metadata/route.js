@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const url = searchParams.get('url');
@@ -16,7 +18,9 @@ export async function GET(request) {
     try {
       const response = await fetch(url, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5'
         },
         signal: AbortSignal.timeout(4000) // 4 second timeout
       });
@@ -37,7 +41,7 @@ export async function GET(request) {
     if (!fallbackToMicrolink && html) {
       const $ = cheerio.load(html);
 
-      title = $('title').text() || $('meta[property="og:title"]').attr('content') || '';
+      title = $('head title').first().text() || $('meta[property="og:title"]').attr('content') || $('title').first().text() || '';
       title = title.trim();
       
       favicon = $('link[rel="icon"]').attr('href') || $('link[rel="shortcut icon"]').attr('href') || $('link[rel="apple-touch-icon"]').attr('href');

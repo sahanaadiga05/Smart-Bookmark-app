@@ -48,21 +48,57 @@ export default function AddBookmarkModal({ userId, onClose, onAdded, initialUrl 
 
     const timeoutId = setTimeout(async () => {
       try {
-        const metadataPromise = fetch(`/api/metadata?url=${encodeURIComponent(cleanUrl)}`).catch(e => null)
-        const duplicatePromise = supabase.from('bookmarks').select('title').eq('user_id', userId).eq('url', cleanUrl).limit(1).maybeSingle().catch(e => ({ error: e, data: null }))
+        // Run duplicate check in background, don't wait for it if it hangs
+        supabase.from('bookmarks').select('title').eq('user_id', userId).eq('url', cleanUrl).limit(1).maybeSingle()
+          .then(dupRes => {
+            if (dupRes && dupRes.data) {
+              setDuplicateWarning(`You already saved this link as "${dupRes.data.title}"`)
+            }
+          })
+          .catch(e => console.warn("Duplicate check error", e));
 
-        const [metaRes, dupRes] = await Promise.all([metadataPromise, duplicatePromise])
+        const metaRes = await fetch(`/api/metadata?url=${encodeURIComponent(cleanUrl)}&_t=${Date.now()}`).catch(e => null)
 
-        if (dupRes && dupRes.data) {
-          setDuplicateWarning(`You already saved this link as "${dupRes.data.title}"`)
-        }
+        let fetchedTitle = '';
+        let fetchedDescription = '';
+        let fetchedFavicon = '';
 
         if (metaRes && metaRes.ok) {
-          const data = await metaRes.json()
-          if (data.title) setTitle(data.title)
-          if (data.description) setSummary(data.description)
-          setPreviewData(data)
-          setMetadataFetched(true)
+          try {
+            const data = await metaRes.json();
+            fetchedTitle = data.title || '';
+            fetchedDescription = data.description || '';
+            fetchedFavicon = data.favicon || '';
+          } catch (e) {
+            console.warn("JSON Parse error", e);
+          }
+        }
+
+        // Direct browser fallback if local API route fails, hangs, or returns bad data
+        if (!fetchedTitle) {
+          try {
+            const microRes = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(cleanUrl)}`);
+            if (microRes.ok) {
+               const microData = await microRes.json();
+               if (microData.status === 'success' && microData.data) {
+                 fetchedTitle = microData.data.title || '';
+                 fetchedDescription = microData.data.description || '';
+                 fetchedFavicon = microData.data.logo?.url || '';
+               }
+            }
+          } catch (e) {
+             console.warn("Microlink fallback error", e);
+          }
+        }
+
+        if (fetchedTitle) {
+          setTitle(fetchedTitle);
+          setSummary(fetchedDescription);
+          setPreviewData({ title: fetchedTitle, description: fetchedDescription, favicon: fetchedFavicon });
+          setMetadataFetched(true);
+        } else {
+          setTitle(cleanUrl); // Absolute fallback so it's never blank
+          setMetadataFetched(false);
         }
       } catch (err) {
         console.warn("Fetch metadata or duplicate check error", err)
@@ -98,32 +134,35 @@ export default function AddBookmarkModal({ userId, onClose, onAdded, initialUrl 
     setError('')
     const cleanUrl = url.startsWith('http') ? url : `https://${url}`
     if (!isValidUrl(cleanUrl)) { setError('Please enter a valid URL'); return }
-    if (!title.trim()) { setError('Please enter a title'); return }
 
     setLoading(true)
 
     let finalSummary = summary.trim();
     let finalFavicon = previewData?.favicon || null;
+    let finalTitle = title.trim();
 
-    if (!finalSummary) {
+    if (!finalSummary || !finalTitle) {
       try {
-        const metaRes = await fetch(`/api/metadata?url=${encodeURIComponent(cleanUrl)}`)
+        const metaRes = await fetch(`/api/metadata?url=${encodeURIComponent(cleanUrl)}&_t=${Date.now()}`)
         if (metaRes.ok) {
           const data = await metaRes.json()
-          if (data.description) finalSummary = data.description
-          if (data.favicon) finalFavicon = data.favicon
+          if (!finalTitle && data.title) finalTitle = data.title;
+          if (!finalSummary && data.description) finalSummary = data.description;
+          if (!finalFavicon && data.favicon) finalFavicon = data.favicon;
         }
       } catch (e) {
         console.warn('Fetch on submit failed', e)
       }
     }
+    
+    if (!finalTitle) finalTitle = cleanUrl;
 
     if (bookmarkToEdit) {
       const { data, error: updateError } = await supabase
         .from('bookmarks')
         .update({ 
           url: cleanUrl, 
-          title: title.trim(), 
+          title: finalTitle, 
           summary: finalSummary,
           tags,
           favicon: finalFavicon
@@ -145,7 +184,7 @@ export default function AddBookmarkModal({ userId, onClose, onAdded, initialUrl 
         .insert({ 
           user_id: userId, 
           url: cleanUrl, 
-          title: title.trim(), 
+          title: finalTitle, 
           summary: finalSummary,
           tags,
           favicon: finalFavicon
@@ -247,16 +286,18 @@ export default function AddBookmarkModal({ userId, onClose, onAdded, initialUrl 
           </div>
 
           <div>
-            <label className="block text-gray-700 dark:text-orange-300 text-sm font-medium mb-2">Title *</label>
+            <label className="block text-gray-700 dark:text-orange-300 text-sm font-medium mb-2">
+              Title <span className="text-gray-400 dark:text-orange-500 font-normal">(optional - auto-fetched if left blank)</span>
+            </label>
             <div className="relative">
               <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-orange-400">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-5 5a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2z" />
                 </svg>
               </div>
-              <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="My awesome bookmark"
+              <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Auto-fetches from URL if empty..."
                 className="w-full bg-white dark:bg-white/10 border border-yellow-500/50 focus:border-orange-500 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-orange-400/60 rounded-xl pl-10 pr-4 py-3 outline-none text-sm transition-colors"
-                required />
+                 />
             </div>
           </div>
 

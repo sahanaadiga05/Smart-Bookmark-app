@@ -35,7 +35,7 @@ export default function DashboardPage() {
   const [bookmarks, setBookmarks] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [editingBookmark, setEditingBookmark] = useState(null)
+
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTag, setActiveTag] = useState(null)
   const [showMobileMenu, setShowMobileMenu] = useState(false)
@@ -314,6 +314,35 @@ export default function DashboardPage() {
 
 
 
+      {/* Favorites Section */}
+      {bookmarks.filter(b => b.is_pinned).length > 0 && (
+        <div className="mb-8">
+          <h3 className="text-xs font-semibold text-gray-500 dark:text-orange-500/80 uppercase tracking-wider mb-3">Favorites</h3>
+          <div className="flex flex-col gap-1.5">
+            {bookmarks.filter(b => b.is_pinned).map(bookmark => (
+              <a 
+                key={bookmark.id} 
+                href={bookmark.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 transition-all btn-press group"
+              >
+                {bookmark.favicon ? (
+                  <img src={bookmark.favicon} className="w-4 h-4 rounded-sm" alt="icon" />
+                ) : (
+                  <div className="w-4 h-4 rounded-sm bg-orange-500/20 text-orange-500 flex items-center justify-center text-[10px]">
+                    ★
+                  </div>
+                )}
+                <span className="truncate group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
+                  {bookmark.title || bookmark.url}
+                </span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Tags */}
       {allTags.length > 0 && (
         <div className="mb-8 flex-1 overflow-y-auto pr-2 custom-scrollbar">
@@ -523,10 +552,7 @@ export default function DashboardPage() {
                         bookmark={bookmark} 
                         onDelete={handleDelete} 
                         onTogglePin={handleTogglePin}
-                        onEdit={(b) => {
-                          setEditingBookmark(b)
-                          setShowModal(true)
-                        }}
+
                         viewMode={viewMode} 
                       />
                     ))}
@@ -547,12 +573,11 @@ export default function DashboardPage() {
             onClose={() => {
               setShowModal(false)
               setExtensionUrl('')
-              setEditingBookmark(null)
             }}
             onAdded={handleAdded}
             onUpdated={handleUpdate}
             initialUrl={extensionUrl}
-            bookmarkToEdit={editingBookmark}
+
           />
         )}
       </AnimatePresence>
