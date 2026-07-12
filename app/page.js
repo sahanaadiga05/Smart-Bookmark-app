@@ -134,7 +134,7 @@ export default function HomePage() {
         >
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-3">
-              Smart Bookmark
+              LiveBook
             </h1>
             <p className="text-gray-600 dark:text-orange-300 text-lg">
               Save, organize & sync your bookmarks in real-time

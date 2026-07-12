@@ -36,7 +36,7 @@ export default function Navbar({ user }) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
               </svg>
             </div>
-            <span className="text-gray-900 dark:text-white font-bold text-lg hidden sm:block">Smart Bookmark</span>
+            <span className="text-gray-900 dark:text-white font-bold text-lg hidden sm:block">LiveBook</span>
           </div>
 
           {/* Realtime indicator */}
