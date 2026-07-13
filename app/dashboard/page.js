@@ -76,18 +76,36 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const init = async () => {
+      console.log('DASHBOARD: init starting...')
+      const getSessionPromise = supabase.auth.getSession()
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Session check timed out')), 5000)
+      )
+
       try {
-        const { data, error } = await supabase.auth.getSession()
-        if (error) throw error
-        if (!data?.session) {
+        const result = await Promise.race([getSessionPromise, timeoutPromise])
+        console.log('DASHBOARD: getSession returned:', { hasSession: !!result?.data?.session })
+        if (result?.error) throw result.error
+        if (!result?.data?.session) {
           router.push('/')
           return
         }
-        setUser(data.session.user)
-        await fetchBookmarks(data.session.user.id)
+        setUser(result.data.session.user)
+        
+        console.log('DASHBOARD: Fetching bookmarks...')
+        await Promise.race([
+          fetchBookmarks(result.data.session.user.id),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch bookmarks timed out')), 5000))
+        ])
+        console.log('DASHBOARD: Bookmarks loaded')
       } catch (err) {
-        console.warn('Session error (silenced):', err.message)
-        await supabase.auth.signOut().catch(() => {})
+        console.warn('Dashboard init error:', err.message)
+        try {
+          await Promise.race([
+            supabase.auth.signOut(),
+            new Promise((_, r) => setTimeout(() => r(new Error('Signout timed out')), 2000))
+          ]).catch(() => {})
+        } catch {}
         router.push('/')
       } finally {
         setLoading(false)
