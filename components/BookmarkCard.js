@@ -135,6 +135,19 @@ export default function BookmarkCard({ bookmark, onDelete, onTogglePin, onEdit, 
         {/* Action Buttons */}
         <div className={`opacity-0 group-hover:opacity-100 flex items-center gap-1 shrink-0 ${viewMode === 'list' ? 'ml-auto mt-0' : 'absolute top-3 right-3'}`}>
           <button
+            type="button"
+            {...dragAttributes}
+            {...dragListeners}
+            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-gray-100 hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/20 text-gray-500 dark:text-orange-300 cursor-grab active:cursor-grabbing btn-press transition-colors"
+            title="Drag to reorder"
+            aria-label="Drag to reorder"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 6h.01M8 12h.01M8 18h.01M16 6h.01M16 12h.01M16 18h.01" />
+            </svg>
+          </button>
+
+          <button
             onClick={() => onTogglePin(bookmark.id, !bookmark.is_pinned)}
             className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 btn-press transition-colors ${bookmark.is_pinned ? 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 opacity-100' : 'bg-gray-100 hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/20 text-gray-500 dark:text-orange-300'}`}
             title={bookmark.is_pinned ? "Unpin" : "Pin tracking"}

@@ -86,9 +86,9 @@ export default function DashboardPage() {
         setUser(data.session.user)
         await fetchBookmarks(data.session.user.id)
       } catch (err) {
-        console.warn('Session error (silenced):', err.message)
+        console.warn('Session error:', err.message)
         await supabase.auth.signOut().catch(() => {})
-        router.push('/')
+        router.push(`/?authError=${encodeURIComponent(err.message || 'We could not restore your session.')}`)
       } finally {
         setLoading(false)
       }

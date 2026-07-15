@@ -9,10 +9,37 @@ export default function HomePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [checkingAuth, setCheckingAuth] = useState(true)
+  const [authError, setAuthError] = useState('')
   const supabase = createClient()
 
+  const formatAuthError = (message) => {
+    if (!message) return ''
+
+    const normalized = message.toLowerCase()
+    if (normalized.includes('redirect') || normalized.includes('provider')) {
+      return 'Google sign-in failed because the OAuth redirect settings do not match this app.'
+    }
+    if (normalized.includes('code verifier') || normalized.includes('code challenge') || normalized.includes('authorization code')) {
+      return 'Google sign-in expired or the callback was incomplete. Please try again.'
+    }
+    if (normalized.includes('invalid') && normalized.includes('grant')) {
+      return 'Google sign-in was rejected before the session could be created. Please try again.'
+    }
+
+    return message
+  }
+
   useEffect(() => {
-    // Check if already logged in
+    const params = new URLSearchParams(window.location.search)
+    const incomingAuthError = params.get('authError')
+    if (incomingAuthError) {
+      setAuthError(formatAuthError(incomingAuthError))
+      params.delete('authError')
+      const nextQuery = params.toString()
+      const nextUrl = nextQuery ? `${window.location.pathname}?${nextQuery}` : window.location.pathname
+      window.history.replaceState({}, document.title, nextUrl)
+    }
+
     const checkUser = async () => {
       try {
         const { data, error } = await supabase.auth.getSession()
@@ -23,8 +50,9 @@ export default function HomePage() {
           setCheckingAuth(false)
         }
       } catch (err) {
-        console.warn('Auth error (silenced):', err.message)
-        await supabase.auth.signOut().catch(() => {}) // Clear broken state
+        console.warn('Auth error:', err.message)
+        setAuthError(formatAuthError(err.message || 'We could not restore your session. Please sign in again.'))
+        await supabase.auth.signOut().catch(() => {})
         setCheckingAuth(false)
       }
     }
@@ -41,6 +69,7 @@ export default function HomePage() {
     })
     if (error) {
       console.error('Login error:', error)
+      setAuthError(formatAuthError(error.message || 'Google sign-in could not start.'))
       setLoading(false)
     }
   }
@@ -160,6 +189,12 @@ export default function HomePage() {
           </div>
 
           {/* Google Login Button */}
+          {authError && (
+            <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-left text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-200">
+              {authError}
+            </div>
+          )}
+
           <motion.button
             whileHover={{ scale: 1.02, y: -2 }}
             whileTap={{ scale: 0.98 }}
@@ -206,3 +241,5 @@ export default function HomePage() {
     </div>
   )
 }
+
+
