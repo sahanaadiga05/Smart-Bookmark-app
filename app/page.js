@@ -14,29 +14,17 @@ export default function HomePage() {
   useEffect(() => {
     // Check if already logged in
     const checkUser = async () => {
-      console.log('HOME: checkUser starting...')
-      const getSessionPromise = supabase.auth.getSession()
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Session check timed out')), 4000)
-      )
-
       try {
-        const result = await Promise.race([getSessionPromise, timeoutPromise])
-        console.log('HOME: getSession returned:', { hasSession: !!result?.data?.session })
-        if (result?.error) throw result.error
-        if (result?.data?.session) {
+        const { data, error } = await supabase.auth.getSession()
+        if (error) throw error
+        if (data?.session) {
           router.push('/dashboard')
         } else {
           setCheckingAuth(false)
         }
       } catch (err) {
-        console.warn('Auth check failed or timed out:', err.message)
-        try {
-          await Promise.race([
-            supabase.auth.signOut(),
-            new Promise((_, r) => setTimeout(() => r(new Error('Signout timed out')), 2000))
-          ]).catch(() => {})
-        } catch {}
+        console.warn('Auth error (silenced):', err.message)
+        await supabase.auth.signOut().catch(() => {}) // Clear broken state
         setCheckingAuth(false)
       }
     }
@@ -146,7 +134,7 @@ export default function HomePage() {
         >
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-3">
-              LiveBook
+              Smart Bookmark
             </h1>
             <p className="text-gray-600 dark:text-orange-300 text-lg">
               Save, organize & sync your bookmarks in real-time

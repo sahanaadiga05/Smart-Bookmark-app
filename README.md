@@ -1,12 +1,12 @@
-# LiveBook 🔖
+# Smart Bookmark App 🔖
 
 A full-stack bookmark manager built with Next.js, Supabase, and Tailwind CSS. Save, organize, and sync your bookmarks in real-time across all your tabs and devices.
 
 ## 🔗 Live Demo
-[livebook-app.vercel.app](https://livebook-app.vercel.app)
+[smart-bookmark-app.vercel.app](https://smart-bookmark-app.vercel.app)
 
 ## 📁 GitHub Repository
-[github.com/YOUR_USERNAME/livebook-app](https://github.com/YOUR_USERNAME/livebook-app)
+[github.com/YOUR_USERNAME/smart-bookmark-app](https://github.com/YOUR_USERNAME/smart-bookmark-app)
 
 ---
 
@@ -39,7 +39,7 @@ A full-stack bookmark manager built with Next.js, Supabase, and Tailwind CSS. Sa
 ## 📂 Project Structure
 
 ```
-livebook-app/
+smart-bookmark-app/
 ├── app/
 │   ├── globals.css         # Global styles and animations
 │   ├── layout.js           # Root layout
@@ -84,8 +84,8 @@ create table bookmarks (
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/YOUR_USERNAME/livebook-app.git
-cd livebook-app
+git clone https://github.com/YOUR_USERNAME/smart-bookmark-app.git
+cd smart-bookmark-app
 ```
 
 ### 2. Install dependencies

@@ -76,36 +76,18 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const init = async () => {
-      console.log('DASHBOARD: init starting...')
-      const getSessionPromise = supabase.auth.getSession()
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Session check timed out')), 5000)
-      )
-
       try {
-        const result = await Promise.race([getSessionPromise, timeoutPromise])
-        console.log('DASHBOARD: getSession returned:', { hasSession: !!result?.data?.session })
-        if (result?.error) throw result.error
-        if (!result?.data?.session) {
+        const { data, error } = await supabase.auth.getSession()
+        if (error) throw error
+        if (!data?.session) {
           router.push('/')
           return
         }
-        setUser(result.data.session.user)
-        
-        console.log('DASHBOARD: Fetching bookmarks...')
-        await Promise.race([
-          fetchBookmarks(result.data.session.user.id),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch bookmarks timed out')), 5000))
-        ])
-        console.log('DASHBOARD: Bookmarks loaded')
+        setUser(data.session.user)
+        await fetchBookmarks(data.session.user.id)
       } catch (err) {
-        console.warn('Dashboard init error:', err.message)
-        try {
-          await Promise.race([
-            supabase.auth.signOut(),
-            new Promise((_, r) => setTimeout(() => r(new Error('Signout timed out')), 2000))
-          ]).catch(() => {})
-        } catch {}
+        console.warn('Session error (silenced):', err.message)
+        await supabase.auth.signOut().catch(() => {})
         router.push('/')
       } finally {
         setLoading(false)
@@ -285,7 +267,7 @@ export default function DashboardPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
             </svg>
           </div>
-          <span className="text-gray-900 dark:text-white font-bold tracking-tight">LiveBook</span>
+          <span className="text-gray-900 dark:text-white font-bold tracking-tight">Smart Bookmark</span>
         </div>
 
         <div className="flex items-center gap-3 p-3 bg-white/50 dark:bg-white/5 rounded-2xl border border-yellow-500/50 shadow-sm">
@@ -445,7 +427,7 @@ export default function DashboardPage() {
             <button onClick={() => setShowMobileMenu(true)} className="p-2 -ml-2 text-gray-600 dark:text-gray-300 btn-press">
               <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
             </button>
-            <span className="font-bold">LiveBook</span>
+            <span className="font-bold">Smart Bookmark</span>
           </div>
           <button 
             onClick={() => setShowModal(true)}
