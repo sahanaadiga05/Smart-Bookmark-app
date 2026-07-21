@@ -12,6 +12,19 @@ export default function HomePage() {
   const [authError, setAuthError] = useState('')
   const supabase = createClient()
 
+  const getSiteUrl = () => {
+    const configuredUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim()
+    if (configuredUrl) {
+      return configuredUrl.startsWith('http') ? configuredUrl : `https://${configuredUrl}`
+    }
+
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return window.location.origin
+    }
+
+    return 'https://smart-bookmark-app.vercel.app'
+  }
+
   const formatAuthError = (message) => {
     if (!message) return ''
 
@@ -61,13 +74,28 @@ export default function HomePage() {
 
   const handleGoogleLogin = async () => {
     setLoading(true)
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
-    if (error) {
+    setAuthError('')
+
+    try {
+      const redirectTo = `${getSiteUrl()}/auth/callback`
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          skipBrowserRedirect: true,
+        },
+      })
+
+      if (error) {
+        throw error
+      }
+
+      if (!data?.url) {
+        throw new Error('Google sign-in did not return a redirect URL.')
+      }
+
+      window.location.assign(data.url)
+    } catch (error) {
       console.error('Login error:', error)
       setAuthError(formatAuthError(error.message || 'Google sign-in could not start.'))
       setLoading(false)
@@ -173,16 +201,16 @@ export default function HomePage() {
           {/* Features list */}
           <div className="space-y-3 mb-8">
             {[
-              { icon: '🔒', text: 'Private bookmarks — only you can see them' },
-              { icon: '⚡', text: 'Real-time sync across all your tabs' },
-              { icon: '🌐', text: 'Access from anywhere, anytime' },
+              { icon: 'Secure', text: 'Private bookmarks - only you can see them' },
+              { icon: 'Fast', text: 'Real-time sync across all your tabs' },
+              { icon: 'Web', text: 'Access from anywhere, anytime' },
             ].map((feature, i) => (
               <motion.div 
                 key={i} 
                 variants={itemVariants}
                 className="flex items-center gap-3 text-gray-700 dark:text-orange-200"
               >
-                <span className="text-xl">{feature.icon}</span>
+                <span className="text-sm font-semibold min-w-12">{feature.icon}</span>
                 <span className="text-sm font-medium">{feature.text}</span>
               </motion.div>
             ))}
@@ -235,11 +263,9 @@ export default function HomePage() {
           variants={itemVariants}
           className="text-center text-gray-400 dark:text-orange-500 text-sm mt-6"
         >
-          Built with Next.js · Supabase · Tailwind CSS
+          Built with Next.js - Supabase - Tailwind CSS
         </motion.p>
       </motion.div>
     </div>
   )
 }
-
-

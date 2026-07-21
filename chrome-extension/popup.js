@@ -9,8 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
       urlPreview.textContent = currentTab.title || currentTab.url;
       
       saveBtn.addEventListener('click', () => {
-        // Open the Next.js app in a new tab with the URL as a query parameter
-        const appUrl = `https://smart-bookmark-app-seven-eta.vercel.app/dashboard?addUrl=${encodeURIComponent(currentTab.url)}`;
+        // Open the deployed app in a new tab with the URL as a query parameter
+        const appBaseUrl = 'https://smart-bookmark-app.vercel.app';
+        const appUrl = `${appBaseUrl}/dashboard?addUrl=${encodeURIComponent(currentTab.url)}`;
         chrome.tabs.create({ url: appUrl });
       });
     } else {
