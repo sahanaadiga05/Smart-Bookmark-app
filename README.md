@@ -1,3 +1,5 @@
+![CI](https://github.com/sahanaadiga05/Smart-Bookmark-app/actions/workflows/ci.yml/badge.svg)
+
 # Smart Bookmark App 🔖
 
 A full-stack bookmark manager built with Next.js, Supabase, and Tailwind CSS. Save, organize, and sync your bookmarks in real-time across all your tabs and devices.
